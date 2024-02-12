@@ -1,0 +1,18 @@
+body {
+    font-family: Arial, sans-serif;
+    margin: 0;
+  }
+  
+  #fileExplorer {
+    padding: 20px;
+  }
+  
+  .entry {
+    cursor: pointer;
+    margin-bottom: 5px;
+  }
+  
+  .entry:hover {
+    background-color: #f0f0f0;
+  }
+  

@@ -1,0 +1,142 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Fetch Data</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 20px;
+        }
+
+        #result {
+            white-space: pre-wrap;
+        }
+
+        .folder {
+            margin-left: 20px;
+            cursor: pointer;
+        }
+    </style>
+</head>
+
+<body>
+    <h1>Fetch Data Example</h1>
+    <div id="result"></div>
+
+    <script>
+        let hierarchyData;
+
+        function fetchData() {
+            var requestOptions = {
+                method: 'GET',
+                redirect: 'follow'
+            };
+
+            fetch("http://localhost:3000/file", requestOptions)
+                .then(response => response.json())
+                .then(result => {
+                    hierarchyData = result;
+                    document.getElementById("result").innerHTML = drawHierarchy(hierarchyData);
+                })
+                .catch(error => {
+                    document.getElementById("result").innerText = 'Error: ' + error;
+                });
+        }
+
+        function drawHierarchy(data) {
+            let html = '';
+            if (Array.isArray(data)) {
+                html += '<ul>';
+
+                data.forEach(item => {
+                    if (item.isDirectory) {
+                        html += '<li class="folder" data-name="' + item.name + '">' + '📁 ' + item.name + '<button onclick="showOptions(event)">+</button>';
+                        html += drawHierarchy(item.children);
+                        html += '</li>';
+                    } else {
+                        html += '<li>' + '📄 ' + item.name + '</li>';
+                    }
+                });
+
+                html += '</ul>';
+            }
+            return html;
+        }
+
+        function showOptions(event) {
+    const folderName = event.target.parentNode.dataset.name;
+    const path = getPath(hierarchyData, folderName);
+    const newItemName = prompt("Complete path to folder '" + folderName + "':\n" + path.join(" / ") +
+        "\n\nEnter the name of the new item:");
+
+    if (newItemName.trim() !== "") {
+        const newItemType = confirm("Create a new file? Click OK for 'file', Cancel for 'directory'");
+        const newPath = path.concat([newItemName]).join('/'); // Adjusted line to prevent filename duplication
+
+        fetch("http://localhost:3000/file", {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({ path: newPath, fileName: newItemName })
+        })
+        .then(response => {
+            if (!response.ok) {
+                throw new Error('Failed to create file.');
+            }
+            return response.json();
+        })
+        .then(result => {
+            console.log('File created successfully:', result);
+            updateFileStructure();
+            document.getElementById("result").innerHTML = drawHierarchy(hierarchyData);
+        })
+        .catch(error => {
+            console.error('');
+            // alert('Error creating file: ' + error.message);
+        });
+    } else {
+        alert("Please enter a valid name for the new item.");
+    }
+}
+
+
+        function getPath(data, folderName) {
+            let path = [];
+            for (const item of data) {
+                if (item.isDirectory && item.name === folderName) {
+                    path.push(item.name);
+                    return path;
+                } else if (item.isDirectory) {
+                    const foundInChild = getPath(item.children, folderName);
+                    if (foundInChild.length > 0) {
+                        path.push(item.name);
+                        path = path.concat(foundInChild);
+                        return path;
+                    }
+                }
+            }
+            return path;
+        }
+
+        function findFolder(data, folderName) {
+            for (const item of data) {
+                if (item.isDirectory && item.name === folderName) {
+                    return item;
+                }
+                const foundInChild = findFolder(item.children, folderName);
+                if (foundInChild) {
+                    return foundInChild;
+                }
+            }
+            return null;
+        }
+
+        window.addEventListener('load', fetchData);
+    </script>
+</body>
+
+</html>
